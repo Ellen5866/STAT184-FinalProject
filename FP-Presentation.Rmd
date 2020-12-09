@@ -1,0 +1,54 @@
+---
+title: "Final Project Presentation"
+author: "Ellen Liu"
+date: "12-11-2020"
+output: html_notebook
+---
+
+# Guiding Question: How gun-related violence affect the United States?
+  As the U.S. is one of the few countries in which the right to bear arms is constitutionally protected. A consequence of this is that the level of gun voilence is very high compared to other countries. So for this project, I want to performed some deep explorations on this Dataset of gun violence incidents provided by Gun Violence Archive (GVA). I expect this analysis help us have a more comprhensive understanding about the gun violence in U.S. and take gun control more seriously.
+  
+## Monthly incidents for each year
+```{r}
+library(scales)
+quarterly<-
+Gun_violence_new %>%
+  filter(year!= 2013)  %>%
+  group_by(year,month) %>%
+  summarise(monthly= n()) 
+quarterly
+```
+  
+  
+```{r}
+quarterly%>%
+ggplot(aes(x=month, y=monthly)) + geom_bar(stat='identity')  + facet_wrap(.~year,ncol=2) + labs(x='monthly', y='Number of incidents')+scale_x_continuous(breaks = pretty_breaks())+theme_linedraw() 
+```
+
+
+## Incidents relative to the State population size
+
+```{r}
+#Incidents of each State in descending order
+topState <- 
+  Gun_violence %>%
+  group_by(state) %>%
+  summarise(case_count= n()) %>%
+   arrange(desc(case_count))
+
+#Incidents relative to the State population size
+crimedensity<-
+  topState %>%
+left_join(useful_ZipGeography, by = c("state"= "State")) %>%
+  mutate(per_million=case_count/(population/1000000))
+
+
+crimedensity
+```
+
+
+```{r}
+crimedensity %>%
+  ggplot(aes(y=reorder(state, per_million), x=per_million, fill=per_million, text=state,width=.7))+geom_bar(stat='identity')+theme(legend.position="none")+labs(x='Incidents per million people', y='State')+theme_linedraw() 
+```
+
