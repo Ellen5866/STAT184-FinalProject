@@ -1,0 +1,120 @@
+
+---
+title: "Final Project Preliminary EDA"
+author: "Ellen Liu"
+date: "11-15-2020"
+output: html_notebook
+---
+
+# Guiding Question: How gun-related violence affect the United States?
+the major month, place gun-related violence happened the most and the main age group or gun  type  relate to the cases between January 2013 and March 2018.
+
+## Become acquainted with your data sources:
+### Where did you find them?
+I find the dataset from kaggle website, which is a csv file called Gun Violence Data which contains data for all recorded gun violence incidents in the US between January 2013 and March 2018, inclusive.
+[link](https://www.kaggle.com/jameslko/gun-violence-data)
+
+```{r}
+library(tidyverse)
+library(dplyr)
+
+
+Gun_violence <- read.csv("/Users/ellenus/Desktop/5th\ Semester/Stat\ 184/Final\ Project/gun-violence-data_01-2013_03-2018.csv", header = TRUE)
+Gun_violence
+```
+
+### Who collected/maintains them?
+The data was downloaded from gunviolencearchive.org. Gun Violence Archive (GVA) is a not for profit corporation formed in 2013. GVA will collect and check for accuracy, comprehensive information about gun-related violence in the U.S. and then post and disseminate it online.
+
+### When & Why were they originally collected?
+They collected trough 2013 to 2018 since all data is in this time range. And the reason they collected the data is to provide free online public access to accurate information about gun-related violence in the United States, and provide large and easily-accessible amounts of detailed data on gun violence.
+
+### What does a case represent in each data source, and how many total cases are available?
+Each case represent a gun-related incident occurred during January 2013 and March 2018 with the information of where, when, why it happened and background of people involved. And there are total of 239677 cases available.
+```{r}
+nrow(Gun_violence)
+```
+
+
+### What are some of the variables that you plan to use
+I have delete several variables(some url, latitude, longitude and name) from the original file which I think are not really necessary. and the rest of 22 variables will somehow used in my project.
+```{r}
+ncol(Gun_violence)
+```
+
+
+## Explore intuition related to the research question
+
+### Create some informative plots and summary statistics 
+```{r}
+str(Gun_violence)
+```
+
+```{r}
+library(tidyr)
+Gun_violence_new <-
+ Gun_violence %>%
+   mutate(date = mdy(date)) %>% # make the date variable tider
+   mutate(year = lubridate::year(date),month = lubridate::month(date),day = lubridate::day(date)) # split the date variable to three different variable: year, month, date
+Gun_violence_new
+str(Gun_violence_new)
+```
+
+```{r}
+# the top 10 states with the most gun-related violence during the period
+top10State <- 
+  Gun_violence %>%
+  group_by(state) %>%
+  summarise(case_count= n()) %>%
+   arrange(desc(case_count)) %>%
+   head(10)
+top10State
+```
+
+```{r}
+ggplot(data=top10State, aes(x=state, y=case_count)) +
+  geom_bar(stat="identity")
+
+```
+
+
+```{r}
+incres_decrease <- 
+  Gun_violence_new %>%
+  filter(year!= 2013, year != 2018)  %>%
+  group_by(year) %>%
+  summarise(yearly= n()) %>%
+  mutate(year_average = yearly/12)
+
+incres_decrease
+
+```
+
+```{r}
+incres_decrease %>%
+  ggplot()+geom_line(aes(x= year,y = yearly))+
+```
+
+### Describe preliminary observations and intuition about the research question
+
+Based on the data wrangling and graphs, I can easily tell that the violence cases are increasing pretty rapidly with the time past. Besides the top 10 states with most gun-related violence are all big states with large population. With the further research, I want to look deeply about the month the age group and specif area that most likely the gum-relate violence happen.
+
+## TWO Data Sources (at least)
+
+### Primary data:  gun-violence-data_01-2013_03-2018.csv  (73.1 MB)
+A csv file that contains 239677 cases that was found in kaggle website.
+
+### Other data sources: from an R package 
+Modified ZipGeography from DataComputing package which contains 53 states with their population.
+```{r}
+library(DataComputing)
+ useful_ZipGeography<-
+      ZipGeography %>%
+      group_by(State) %>%
+      summarise(count= sum(Population,na.rm = TRUE)) %>%
+      rename(population = count)
+       
+useful_ZipGeography
+
+        
+```
