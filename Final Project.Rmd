@@ -9,7 +9,7 @@ output: html_notebook
 # Guiding Question: How gun-related violence affect the United States?
   As the US is one of the few countries in which the right to bear arms is constitutionally protected. A consequence of this is that the level of gun violence is very high compared to other countries. For instance, America has six times as many firearm homicides as Canada, and nearly 16 times as many as Germany. 
   
-  Based on Wikipedia, Gun violence in the US results in tens of thousands of deaths and injuries annually. In 2013, there were 73,505 nonfatal firearm injuries which included 11,208 homicides, 21,175 suicides, 505 deaths due to accidental or negligent discharge of a firearm, and 281 deaths due to firearms use with "undetermined intent". 
+  Based on Wikipedia, Gun violence in the US results in tens of thousands of deaths and injuries annually. In 2013, there were 73,505 nonfatal firearm injuries which included 11,208 homicides, 21,175 suicides, 505 deaths due to accidental or negligent discharge of a firearm, and 281 deaths due to firearms use with "undetermined intent".
   
   For this project, I have performed a deep exploration on this dataset of gun violence incidents reported in US by, Gun Violence Archive (GVA), a non-profit corporation formed in 2013 to provide free online public access to information about gun-related violence in the United States.
   
