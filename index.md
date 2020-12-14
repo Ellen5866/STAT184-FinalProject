@@ -1,37 +1,422 @@
-## Welcome to GitHub Pages
+# How gun-related violence affect the United States?
 
-You can use the [editor on GitHub](https://github.com/Ellen5866/STAT184-FinalProject/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+As the US is one of the few countries in which the right to bear arms is constitutionally protected. A consequence of this is that the level of gun violence is very high compared to other countries. For instance, America has six times as many firearm homicides as Canada, and nearly 16 times as many as Germany. 
+  
+  Based on Wikipedia, Gun violence in the US results in tens of thousands of deaths and injuries annually. In 2013, there were 73,505 nonfatal firearm injuries which included 11,208 homicides, 21,175 suicides, 505 deaths due to accidental or negligent discharge of a firearm, and 281 deaths due to firearms use with "undetermined intent". 
+  
+  For this project, I have performed a deep exploration on this dataset of gun violence incidents reported in US by, Gun Violence Archive (GVA), a non-profit corporation formed in 2013 to provide free online public access to information about gun-related violence in the United States.
+  
+  I want to perform this project with three perspective:
+  
+  * Time
+    + Yearly
+    + Quarterly
+    + Monthly 
+    
+  * Location
+    + State 
+    + Density
+    
+  * Type
+    + Some popular cities vs. U.S.
+    
+  And I expect these analysis will help us have a more comprehensive understanding about the gun violence in U.S. and take gun control more seriously.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+## Data sources
 
-### Markdown
+### Primary data source: gun-violence-data_01-2013_03-2018.csv  (73.1 MB)
+  I found this dataset from Kaggle website, it is a csv file called Gun Violence Data which contains data for all recorded gun violence incidents in the US between January 2013 and March 2018.
+[link](https://www.kaggle.com/jameslko/gun-violence-data)
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+  The data was originally downloaded from gunviolencearchive.org. Gun Violence Archive (GVA) is a not for profit corporation formed in 2013. GVA will collect and check for accuracy, comprehensive information about gun-related violence in the U.S. and then post and disseminate it online.
 
-```markdown
-Syntax highlighted code block
+  They collected through 2013 to 2018 since all data is in this time range. And the reason they collected the data is to provide free online public access to accurate information about gun-related violence in the United States, and provide large and easily-accessible amounts of detailed data on gun violence.
 
-# Header 1
-## Header 2
-### Header 3
+```{r}
+#load packages
+library(dplyr)
+library(tidyverse)
 
-- Bulleted
-- List
+#import primary data source
+Gun_violence <- read.csv("/Users/ellenus/Desktop/5th\ Semester/Stat\ 184/Final\ Project/gun-violence-data_01-2013_03-2018.csv", header = TRUE)
 
-1. Numbered
-2. List
+# Inspect data, show first 10 rows of the data
+head(Gun_violence, 10)
 
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+```
+  Each case in this dataset represents a gun-related incident occurred during January 2013 and March 2018 with the information of where, when, why each incident happened and background of people involved. And there are total of 239677 cases available.
+```{r}
+# total number of cases
+nrow(Gun_violence)
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+  I have delete several variables(some URLs, latitude, longitude and name) from the original file before importing, which I think are not really useful. And the rest of 22 variables will somehow used in my project and following variables are mainly used: date, state, n-killed, n-injured, incident_characteristics. I will also add some new variables if necessary.
+```{r}
+# number of variables
+ncol(Gun_violence)
+```
 
-### Jekyll Themes
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/Ellen5866/STAT184-FinalProject/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+### Supporting data: ZipGeography dataset from DataComputing package
 
-### Support or Contact
+  As for this project, I want to perform some relationship between incidents and location, I choose the ZipGeography dataset from DataComputing package which includes the population for 53 states. 
+```{r}
+# load package
+library(DataComputing)
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+# inspect data
+help( ZipGeography)
+str(ZipGeography)
+head(ZipGeography, 10)
+ZipGeography
+```
+
+  For this dataset, each case represents information about the location, area, and housing units in each ZIP code area.
+It contains 42741 cases and 13 variables. And I will mainly use the State, Population, City from it for this project. To better compute my analysis, I modified the dataset to only contain the variables I need and made two separate table focus on city and state.
+```{r}
+# population based on city
+city_ZipGeography<-
+      ZipGeography %>%
+      group_by(State,CityName) %>%
+      summarise(count= sum(Population,na.rm = TRUE)) %>%
+      rename(population = count)
+       
+# population based on state
+State_ZipGeography<-
+      ZipGeography %>%
+      group_by(State) %>%
+      summarise(count= sum(Population,na.rm = TRUE)) %>%
+      rename(population = count)
+
+# explore both tables
+city_ZipGeography
+State_ZipGeography
+
+```
+
+## Explore intuition related to the research question
+
+### Date: Comparing number of incidents by year, quarter and month
+For this first part I want to explore the relationship between time and number of incidents. Based on the analysis by year, quarter and month to see when the most incident occurs and see whether it's increasing or decreasing.
+
+```{r}
+# load packages
+library(tidyr)
+library( lubridate )
+
+#inspect data
+str(Gun_violence)
+```
+
+```{r}
+# modify table: reform the date
+Gun_violence_new <-
+ Gun_violence %>%
+   mutate(date = mdy(date)) %>% # make the date variable tidier
+   mutate(year = lubridate::year(date),month = lubridate::month(date),day = lubridate::day(date)) # split the date variable to three different variable: year, month, date
+
+#explore modified data table
+Gun_violence_new
+str(Gun_violence_new)
+```
+
+
+#### Yearly incidents
+```{r}
+# create yearly incidents table of the U.S. from 2014-2017
+yearly <- 
+  Gun_violence_new %>%
+  filter(year!= 2013, year != 2018)  %>% # exclude 2013 and 2018 since the data are incomplete
+  group_by(year) %>%
+  summarise(yearly= n()) %>%
+  mutate(year_average = mean(yearly)) # compute new variable of average number of incidents of 4 years
+
+yearly
+
+```
+
+
+##### Yearly bar charts
+```{r}
+# plot yearly graph with average line
+ggplot(yearly) + 
+  geom_col(aes(x = year, y = yearly), size = 1, color = "darkblue", fill = "grey") +
+  geom_line(aes(x = year, y = year_average), size = 1.5, color="red", group = 1) + 
+  scale_y_continuous(sec.axis = sec_axis(~./3, name = "year_average"))+geom_text(aes(x = year, y = yearly, label = yearly), vjust = -0.2)+theme_linedraw() 
+```
+ It seems as if most incidents in 2013 were not recorded. And 2018 only has first quarter recorded. So I only used the rest four years. And is obvious that number of incidents are **increasing** as year passing.
+
+
+#### Quarterly incidents
+```{r}
+# load package
+library(ggplot2)
+
+# Get quarter as new variable
+Gun_violence_new$quarter <- quarter(Gun_violence_new$date)
+
+# create yearly incidents table of the U.S. from 2014-2017
+quarterly <- 
+  Gun_violence_new %>% 
+  filter(year!=2013) %>% #exclude 2013 since the data is incomplete
+  select(year, quarter) %>% 
+  group_by(year) %>% 
+  count(quarter) %>%
+  
+  # plot quarterly bar charts and set each year as a facet
+  ggplot(aes(x=as.factor(quarter), y=n)) + geom_bar(stat='identity', fill = "violet") + scale_y_continuous(labels=comma) +   facet_grid(.~year) + labs(x='Quarter', y='Number of incidents')+geom_text(aes(label = n), vjust = 1.5)+theme_linedraw() + facet_wrap(.~year,ncol=2)
+
+quarterly
+```
+
+  Same reason as the yearly graph, I excluded 2013, In addition, 2018 is not a full year of data as the latest recorded incident was on May 31st 2018. As this means exactly one quarter, I am interested if the trend is still upward if I only look at the Q1s of 2014-2018. I will look into this in the next section. I separate each year to it's own grid to make the visualization better. And in the quarterly graph, there seems to be some sort of ‘seasonality’ with Q1 and Q4 generally having lower numbers of incidents than Q2 and Q3. 
+```{r}
+#compare quarter 1 for each year
+first_quarter <- 
+  Gun_violence_new %>% 
+  filter(year!=2013 & quarter==1) %>% # since 2018 only have quarter 1 recorded and 2013 does not have data
+  select(year, quarter) %>%
+        group_by(year) %>% 
+        count(quarter) %>%
+  
+  # plot first quarter bar charts 
+        ggplot(aes(x=as.factor(year), y=n)) + geom_bar(stat='identity',fill = "darkblue") + scale_y_continuous(labels=comma) + labs(x='Incidents in Q1 of each year', y='Number of incidents') + geom_text(aes(label = n), vjust = -0.2) + theme_linedraw() 
+
+first_quarter
+```
+  Since 2018 only have quarter 1 recorded, I try to compare only the first quarter for each year. The second graph shows that Q1 2018 holds less incidents than Q1 2017. This could be seen as a **cautiously positive sign**. However, one should realize that this number is still very high when compared to other countries (relatively).
+
+#### Monthly incidents
+```{r}
+# load package
+library(scales)
+
+#create monthly table  for each year
+monthly1<-
+Gun_violence_new %>%
+  filter(year!= 2013)  %>%
+  group_by(year,month) %>%
+  summarise(monthly= n()) 
+
+# get monthly average for each month
+monthly2<-
+Gun_violence_new %>%
+  filter(year!= 2013, year != 2018)  %>%
+  group_by(month) %>%
+  summarise(months= n())  %>%
+  mutate(month_average = months/4) # compute new variable of average number of incidents of each month
+
+# left join two tables together
+monthly<-
+  monthly1 %>%
+left_join(monthly2, by = c("month"= "month")) 
+  
+monthly
+```
+
+
+##### Monthly bar charts
+```{r}
+# plot monthly graph with average line for each month
+monthly%>%
+ggplot(aes(x=month, y=monthly)) + geom_bar(stat='identity',fill="darkseagreen3")  + facet_wrap(.~year,ncol=3) + labs(x='monthly', y='Number of incidents')+scale_x_continuous(breaks = pretty_breaks())+theme_linedraw() +geom_line(aes(x = month, y = month_average), size = 1, color="coral4", group = 1) 
+
+```
+  The analysis of quarters shows that more incidents occur in the warmer spring and summer periods. This seems worth diving into a little deeper.
+
+  The most visible ‘seasonality’ effect seems to me that the colder months seem to have less incidents. November, December, and February are the 3 months with the lowest number of incidents (February also only has 28 days of course). The exception seems to be January, which is worth investigating later on. My first idea is that possibly incidents on new years eve contribute to January having a high number of incidents.The other peak is the July/August period. I think that the fact that many people go on holidays in this period is the most likely explanation.
+  
+  And even we observe that 2018 first quarter is slightly less than 2017, we can still see that all three month are still high than the monthly average, so we still need to take this seriously.
+
+### Location: Comparing number of incidents by state and city.
+  In the second part of observation, I want to know the relationship between the location and incidents to see where most incidents happened and try to conclude some possible reasons.
+
+#### Top 10 states with most incidents
+```{r}
+# the top 10 states with the most gun-related violence during the period
+top10State <- 
+  Gun_violence %>%
+  group_by(state) %>%
+  summarise(case_count= n()) %>%
+   arrange(desc(case_count)) %>% # make data in descending order
+   head(10)
+
+top10State
+```
+
+
+##### top10State bar charts
+```{r}
+# Create bar charts for top10State
+ggplot(data=top10State, aes(x=state, y=case_count)) + geom_bar(stat="identity",fill="darksalmon") + geom_text(aes(label = case_count), vjust = -0.2)
+
+```
+  For this first graph, I just simply compute the first 10 states with most incidents between 2013 and 2018. And we can see that Pennsylvania is also in the top 10. However, these numbers should be related to the **numbers of inhabitants** to get a good view of the relative numbers of incidents. For instance, California is a state with a very large population. Therefore, it is no surprise to see California as the number two in absolute numbers. 
+```{r}
+#Incidents of each State in descending order
+topState <- 
+  Gun_violence %>%
+  group_by(state) %>%
+  summarise(case_count= n()) %>%
+   arrange(desc(case_count))
+
+#Incidents relative to the State population size
+crimedensity<-
+  topState %>%
+left_join(State_ZipGeography, by = c("state"= "State")) %>%
+  mutate(per_million=case_count/(population/1000000)) # create a new variable that show incidents per million inhabitants
+
+crimedensity
+```
+
+
+##### Incident desdity bar charts
+```{r}
+# Plot bar charts of incidents density graph
+crimedensity %>%
+  filter(state!="District of Columbia")%>% # filter out District of Columbia since it's a outlier
+  ggplot(aes(y=reorder(state, per_million), x=per_million, fill=per_million, text=state,width=.7))+geom_bar(stat='identity')+theme(legend.position="none")+labs(x='Incidents per million people', y='State')+theme_linedraw()+ scale_fill_gradient(low="lightgreen", high="seagreen4")
+```
+   As I indicated earlier that incident numbers should be related to the numbers of inhabitants, so for this graph, I join the two table so we can compare incident number with population. *Note: actually the District of Columbia came out as the state with the highest incidents rate. But it's not really a state and it creates a outlier, so I choose to eliminate it for this graph. *
+   
+   In the figure above, you can see that the enriched data, which are related to the population of each state, paint a very different picture. As the numbers of incidents are related to the population sizes, these numbers now represent ‘real’ gun danger levels. To show this visually, I have used color codes. Dark green means a high danger level in terms of relative numbers of incidents, and light green means that a state is relatively safe.
+
+  Now, Alaska, Louisiana and Delaware are showing the highest relative incident numbers. Hawaii seems the safest state to live in , and the large state of California drops from second state in terms of absolute incidents to a lower position when corrected for the large population.
+```{r}
+#download package
+install.packages("usmap")
+```
+
+```{r}
+#load package
+library(usmap)
+
+#Graph gun-related incidents in the U.S map
+plot_usmap(data = crimedensity,values="per_million",color="blue") + 
+  labs(title = "Gun-related incidents in the U.S",
+       subtitle = "Source: GVA, 2013-2018") + scale_fill_continuous(low="white",high="darkred",name="incident_density",label=scales::comma)
+  theme(legend.position = "right")
+```
+  To make the visualization much clearer, I compute a map so that we can see that per million inhabitants, states at south-east part of the U.S. tend to have more incidents.
+  
+#### Victims by State
+```{r}
+#add new variable: victims which is the sum of killed and injured
+Gun_violence_new$victims <- Gun_violence_new$n_killed + Gun_violence_new$n_injured
+
+# Create table that includes sum of injure, sum of death, victim per incident,sum of incidents ... for each state
+Victims1 <- 
+  Gun_violence_new %>% 
+  group_by(state) %>%
+  summarize(sumVic=sum(victims), sumInj=sum(n_injured), sumDeath=sum(n_killed), PercDeath=round(sumDeath/sumVic,2), sumIncidents=n(), vicPerInc=round(sumVic/sumIncidents,2))
+
+# left join population form State_ZipGeography 
+victims<-
+  Victims1 %>%
+left_join(State_ZipGeography, by = c("state"= "State"))
+
+head(victims)
+```
+  As you can see in the table above, Alaska actually has a relatively low number of victims per incident (0.44). However, as shown in the density graph, Alaska has the highest density.
+
+##### Graph of relationship between state populatio and victim per incident
+```{r}
+# Scatter plot with regression line 
+victims %>% 
+ggplot(aes(x=population, y=vicPerInc)) + geom_point(stat='identity',color="darkred") + labs(x='population', y='Victims per incidents') + geom_smooth(method=lm) + theme_linedraw()
+```
+  In the graph above, which uses the scatter plot with regression line, you can see that there is positive relationship between the number of victims relative to the population size. This is no surprise, as the state has higher population tend to have more incidents and ranks high regarding the victims per incident ratio. 
+
+### Type: Comparing number of incidents by characteristics.
+  At last, since the ‘incident_characteristics` field actually holds a lot in information. I choose to get an general idea about the characteristic of incidents that happen most in the U.S. And compare some popular cities.
+```{r}
+# use regular expression replacing "||" with "|" as both separators are used
+Gun_violence_new$incident_characteristics <- gsub("\\|\\|", "|", Gun_violence_new$incident_characteristics)
+```
+
+```{r}
+#download package
+install.packages("splitstackshape")
+install.packages("gridExtra")
+library(splitstackshape)
+library(gridExtra )
+```
+
+
+#### Incident types ranking for the U.S.
+```{r}
+#split the column and store all characteristics as separate observations in a new dataframe
+Incident_type <- 
+  splitstackshape::cSplit(Gun_violence_new %>% 
+                            select(incident_id, state, city_or_county, incident_characteristics), 'incident_characteristics', sep =  '|', direction="long")
+
+head(Incident_type,8)
+```
+```{r}
+Incident_type%>% 
+  count(incident_characteristics) %>% 
+  top_n(30, wt=n) %>%
+        ggplot(aes(x=reorder(incident_characteristics, n), y=n)) +
+        geom_bar(stat='identity', fill='orange')  +coord_flip() + labs(x='Incident Category', y='number of incidents')+theme_linedraw()
+```
+  As you can see, there are lots of different categories. These do not necessarily all involve shots being fired. I for instance assume that ‘Non-Shooting Incident’ means that people have just threatened to shoot, or possible have used their gun as a striking weapon. And most incidents are described as Shot - Wounded/Injured.
+
+  As the first 4 categories seem overall categories, I will display numbers on these 4 categories separately in the remainder of next section.
+
+#### graph of main incident categories by popular city 
+```{r}
+# assign all types into overall_categories
+overall_categories <- c("Shot - Wounded/Injured", "Shot - Dead (murder, accidental, suicide)", "Non-Shooting Incident", "Shots Fired - No Injuries")
+
+# set each type with a specific color
+coloursShot <- c("Shot - Wounded/Injured"="red", "Shot - Dead (murder, accidental, suicide)"="darkred", "Non-Shooting Incident"="green", "Shots Fired - No Injuries"="yellow")
+
+# create a user-defined function to create plots by us
+uscategories <- function(fixedX=0.5){
+   Incident_type %>% 
+    filter(incident_characteristics %in% overall_categories) %>%
+   count(incident_characteristics) %>%
+   ggplot(aes(x=reorder(incident_characteristics, n), y=n/sum(n), fill=factor(incident_characteristics))) +
+   geom_bar(stat='identity', width = 0.5) + scale_fill_manual(values = coloursShot) +
+   theme(legend.position="none") + coord_flip(ylim = c(0, fixedX)) + labs(x="", y='US overall') +
+   scale_y_continuous(labels=percent)
+}
+
+# create a user-defined function to create plots by city
+citycategories <- function(cityName){
+   Incident_type %>% 
+    filter(city_or_county==cityName & incident_characteristics %in% overall_categories) %>%
+   count(incident_characteristics) %>%
+   ggplot(aes(x=reorder(incident_characteristics, n), y=n/sum(n), fill=factor(incident_characteristics))) +
+   geom_bar(stat='identity', width = 0.5) + scale_fill_manual(values = coloursShot) +
+   theme(legend.position="none") + coord_flip(ylim = c(0, 0.8)) + labs(x="", y=cityName) +
+   scale_y_continuous(labels=percent)
+}
+
+# use created functions and assign each to a name to plot later
+usOverall_categories <- uscategories(0.8)
+baltimore_categories <- citycategories('Baltimore')
+washington_categories <- citycategories('Washington')
+chicago_categories <- citycategories('Chicago')
+orlando_categories <- citycategories('Orlando')
+
+grid.arrange(usOverall_categories, baltimore_categories, washington_categories, chicago_categories,orlando_categories, ncol=1)
+```
+  Base on the graph above, we can see that except Washington, Shot - Dead (murder, accidental, suicide)" is always more than  "Non-Shooting Incident in many popular cities
+
+  In Baltimore the percentage of incidents with people wounded is high (20% higher than US average). In addition, there are very few incidents with shots fired and people not injured.
+
+  And in Chicago, the percentage of incidents with wounded people is very high. On the other hand, the percentage of incidents with deadly victims is a bit lower than the US average.
+
+## Conclusion & Summary
+  After wrangled the two datasets and construct all these graphs, I have found several idea about the gun-related incidents
+  
+  * The trend is unfortunately upward. The number of incidents increased year-on-year from 2013 to 2017. The number of incidents in Q1 2018 is lower that this number in Q1 2017, which can be seen as a cautiously positive sign.
+  
+  * On average, the number of incidents is lower in autumn/winter than in spring/summer. Which means November and December has less incidents than July and August. And the reason might because holidays tend to have more incidents.
+  
+  * After joining the State_ZipGeography table, Alaska came out as the (to me surprising) state with the relatively highest number of incidents. Besides Alaska, Louisiana and Delaware are also states with high average incident numbers. The safest state regarding the relative number of incidents is Hawaii. However, Alaska has a relatively low ratio of victims (number of people killed + injured) per incident.
+  
+  * The incident characteristics offer a wealth of information. Altogether 110 categories were used to describe the incidents. On a high level, it for instance explains the low victims/incidents ratio of Alaska. However, categories such as terrorism, gang, and drug involvement were also recorded.
+  
+  With all these information, we can conclude that gun-related incidents are a very sever thing happen around us, and we cannot just let it keep increasing, instead, we should take gun control more seriously. 
