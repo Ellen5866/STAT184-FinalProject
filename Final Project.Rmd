@@ -136,7 +136,7 @@ yearly <-
   filter(year!= 2013, year != 2018)  %>% # exclude 2013 and 2018 since the data are incomplete
   group_by(year) %>%
   summarise(yearly= n()) %>%
-  mutate(year_average = sum(yearly)/4) # compute new variable of average number of incidents of 4 years
+  mutate(year_average = mean(yearly)) # compute new variable of average number of incidents of 4 years
 
 yearly
 
